@@ -1,14 +1,15 @@
-### DISEASE PROGRESSION 
+### Disease Progression definition
 
-# Calculate the percentage change in FVCpredicted and DLCOpredicted
+# Calculate the percentage changes in FVCpredicted and DLCOpredicted
+# Select relevant FVC predicted measurements
 FVCpred <- blf %>%
   select(ID, `FVC predicted1`, `FVC predicted2`, `FVC predicted3`, `FVC predicted4`)
 
-# Reshape the data from wide to long format for easier manipulation
+# Reshape the data from wide to long format
 FVCpred_long <- FVCpred %>%
   pivot_longer(cols = starts_with("FVC predicted"), names_to = "Visit", values_to = "FVC_pred") %>%
-  filter(!is.na(FVC_pred)) %>%  # Remove rows with NA values
-  arrange(ID, Visit)  # Ensure data is sorted by ID and Visit
+  filter(!is.na(FVC_pred)) %>%
+  arrange(ID, Visit)
 
 # Calculate the percentage change from first to last available FVC predicted value
 FVCpred_change <- FVCpred_long %>%
@@ -17,11 +18,11 @@ FVCpred_change <- FVCpred_long %>%
     FVCpred_change = (last(FVC_pred) - first(FVC_pred)) / first(FVC_pred) * 100
   )
 
-# Select relevant columns from the blf_subset
+# Select relevant DLCO predicted measurements
 DLCOpred <- blf %>%
   select(ID, `DLCO predicted1`, `DLCO predicted2`, `DLCO predicted3`, `DLCO predicted4`)
 
-# Reshape the data from wide to long format for easier manipulation
+# Reshape the data from wide to long format
 DLCOpred_long <- DLCOpred %>%
   pivot_longer(cols = starts_with("DLCO predicted"), names_to = "Visit", values_to = "DLCO_pred") %>%
   filter(!is.na(DLCO_pred)) %>%  # Remove rows with NA values
@@ -34,10 +35,11 @@ DLCOpred_change <- DLCOpred_long %>%
     DLCOpred_change = (last(DLCO_pred) - first(DLCO_pred)) / first(DLCO_pred) * 100
   )
 
+# Find deceased patients
 deceased <- blf %>%
   select(ID, Deceased)
 
-# Merge the FVC and DLCO percentage changes
+# Merge the FVC and DLCO percentage changes with survival status
 progression_data <- FVCpred_change %>%
   left_join(DLCOpred_change, by = "ID") %>%
   left_join(deceased, by = "ID")
@@ -64,7 +66,7 @@ percent_changes <- FVC_changes %>%
   left_join(progression_data %>% select(ID, clinical_outcome, FVCpred_change), by = "ID")
 
 
-# Classify disease progression as FVC Drop
+# Classify patients into two groups, progression or stable
 percent_changes <- percent_changes %>%
   mutate(
     group = ifelse(
